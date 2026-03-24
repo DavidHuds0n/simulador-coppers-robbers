@@ -1,101 +1,104 @@
 from grafo import GrafoIlha
 from gerador import gerar_mapa_aleatorio
 
+# ==========================================================================
+# --- MOTOR DE SIMULAÇÃO: COPPERS AND ROBBERS ---
+# Gerencia a perseguição em turnos e gera o relatório oficial de saída.
+# ==========================================================================
+
 def simular_fuga(grafo):
+    """
+    Executa o loop principal da perseguição.
+    Regras: Ladrão anda 1 passo, Polícia anda 2 passos por rodada.
+    """
     ladrao_pos = grafo.local_roubo
     policias_pos = list(grafo.posicoes_policia)
     
-    # Logs para o relatório final
+    # Estruturas para o relatório final (Análise e Discussão)
     turnos = 0
     caminho_ladrao = [ladrao_pos]
     caminhos_policias = {i: [pos] for i, pos in enumerate(policias_pos)}
     
-    # Descobre qual é a saída mais próxima do ladrão usando as distâncias pré-calculadas
+    # Estratégia do Ladrão: Ir para a saída que oferece o menor custo total
     saida_alvo = min(grafo.saidas, key=lambda s: grafo.dist[ladrao_pos][s])
     
     while True:
         turnos += 1
         print(f"\n--- TURNO {turnos} ---")
         
-        # 1. Movimento do Ladrão (1 vértice por vez)
+        # --- 1. MOVIMENTAÇÃO DO LADRÃO ---
         if ladrao_pos != saida_alvo:
-            prox_passo = grafo.pegar_proximo_passo(ladrao_pos, saida_alvo)
-            if prox_passo is not None:
-                ladrao_pos = prox_passo
+            prox = grafo.pegar_proximo_passo(ladrao_pos, saida_alvo)
+            if prox:
+                ladrao_pos = prox
                 caminho_ladrao.append(ladrao_pos)
-                print(f"Ladrão correu para o vértice {ladrao_pos}.")
+                print(f"O Ladrão desceu para o vértice {ladrao_pos}.")
         
-        # Verifica se o ladrão escapou logo após se mover
+        # Condição de Vitória 1: Fuga bem-sucedida
         if ladrao_pos in grafo.saidas:
-            gerar_relatorio(sucesso_policia=False, turnos=turnos, cam_ladrao=caminho_ladrao, cam_policias=caminhos_policias)
+            imprimir_relatorio(False, turnos, caminho_ladrao, caminhos_policias)
             break
 
-        # 2. Movimento dos Policiais (2 vértices por vez na perseguição)
-        ladrao_capturado = False
-        
+        # --- 2. MOVIMENTAÇÃO DA POLÍCIA ---
+        capturado = False
         for i, pos_atual in enumerate(policias_pos):
-            for passo in range(2): # Move até 2 vezes
+            # A polícia é 2x mais rápida: executa dois movimentos por turno
+            for movimento in range(2):
                 if pos_atual == ladrao_pos:
-                    ladrao_capturado = True
-                    break
-                    
-                prox_passo_policia = grafo.pegar_proximo_passo(pos_atual, ladrao_pos)
-                if prox_passo_policia is not None:
-                    pos_atual = prox_passo_policia
-                    caminhos_policias[i].append(pos_atual)
-                    
-            policias_pos[i] = pos_atual # Atualiza a posição oficial da equipe
-            print(f"Equipe {i+1} avançou para o vértice {pos_atual}.")
-            
-            if pos_atual == ladrao_pos:
-                ladrao_capturado = True
+                    capturado = True; break
                 
-        # Verifica condição de vitória da polícia
-        if ladrao_capturado:
+                # A polícia sempre recalcula o caminho mínimo até a posição atual do ladrão
+                passo = grafo.pegar_proximo_passo(pos_atual, ladrao_pos)
+                if passo:
+                    pos_atual = passo
+                    caminhos_policias[i].append(pos_atual)
+            
+            policias_pos[i] = pos_atual
+            print(f"Equipe {i+1} avançou para o vértice {pos_atual}.")
+            if pos_atual == ladrao_pos: capturado = True
+                
+        # Condição de Vitória 2: Captura
+        if capturado:
             print("\n!!! O LADRÃO FOI CERCADO E PRESO !!!")
-            gerar_relatorio(sucesso_policia=True, turnos=turnos, cam_ladrao=caminho_ladrao, cam_policias=caminhos_policias)
+            imprimir_relatorio(True, turnos, caminho_ladrao, caminhos_policias)
             break
 
-def gerar_relatorio(sucesso_policia, turnos, cam_ladrao, cam_policias):
-    """Gera a saída exigida pelos critérios do projeto."""
-    print("\n" + "="*40)
-    print("RELATÓRIO OFICIAL DA OPERAÇÃO")
-    print("="*40)
+def imprimir_relatorio(sucesso_policia, turnos, cam_ladrao, cam_policias):
+    """Gera a saída detalhada para o arquivo de análise do projeto."""
+    print("\n" + "="*45)
+    print("      RELATÓRIO FINAL DA OPERAÇÃO")
+    print("="*45)
     
-    palavra_etapa = "etapa" if turnos == 1 else "etapas"
+    etapa_str = "etapa" if turnos == 1 else "etapas"
     
     if sucesso_policia:
-        print(f"Resultado: Ladrão CAPTURADO em {turnos} {palavra_etapa}." )
-        print(f"Momento da captura: Turno {turnos}.")
-        print(f"Equipes mobilizadas: {len(cam_policias)}.")
+        print(f"STATUS: Ladrão CAPTURADO em {turnos} {etapa_str}.")
+        print(f"MOMENTO DO ALCANCE: Turno {turnos}.")
     else:
-        print(f"Resultado: Ladrão ESCAPOU em {turnos} {palavra_etapa}." )
+        print(f"STATUS: Ladrão ESCAPOU em {turnos} {etapa_str}.")
         
-    print(f"Sequência do Ladrão: {' -> '.join(map(str, cam_ladrao))}")
-    
-    print("Caminho percorrido pelas equipes policiais:")
-    for equipe, caminho in cam_policias.items():
-        print(f"  Equipe {equipe + 1}: {' -> '.join(map(str, caminho))}")
-    print("="*40 + "\n")
+    print(f"EQUIPES ENVOLVIDAS: {len(cam_policias)}")
+    print(f"TRAJETÓRIA DO LADRÃO: {' -> '.join(map(str, cam_ladrao))}")
+    print("TRAJETÓRIA DAS EQUIPES:")
+    for equipe, rota in cam_policias.items():
+        print(f"  Equipe {equipe+1}: {' -> '.join(map(str, rota))}")
+    print("="*45 + "\n")
 
+# --- BLOCO PRINCIPAL ---
 if __name__ == "__main__":
-    print("="*40)
-    print("SISTEMA DE SEGURANÇA - COPPERS AND ROBBERS")
-    print("="*40)
+    print("="*45)
+    print("   SISTEMA DE SEGURANÇA: COPPERS & ROBBERS")
+    print("="*45)
     
-    escolha = input("Deseja gerar um NOVO mapa aleatório antes de simular? (s/n): ").strip().lower()
-    
-    arquivo_mapa = "mapa_exemplo.txt"
-    
-    if escolha == 's':
-        gerar_mapa_aleatorio(arquivo_mapa, num_vertices=25, num_saidas=4, num_policiais=3)
+    # Interação para geração de dados
+    if input("Deseja gerar um novo cenário aleatório? (s/n): ").lower() == 's':
+        gerar_mapa_aleatorio()
     
     ilha = GrafoIlha()
-    print("Carregando mapa e inicializando sistema de segurança...")
-    ilha.carregar_mapa(arquivo_mapa)
+    ilha.carregar_mapa("mapa_exemplo.txt")
     
-    print("Calculando rotas estratégicas (Floyd-Warshall)...")
+    print("\n[INFO] Pré-processando rotas otimizadas...")
     ilha.executar_floyd_warshall()
     
-    print("Iniciando simulação de perseguição!")
+    print("[INFO] Simulação iniciada!")
     simular_fuga(ilha)
