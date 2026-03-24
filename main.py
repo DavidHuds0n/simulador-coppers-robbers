@@ -1,4 +1,5 @@
 from grafo import GrafoIlha
+from gerador import gerar_mapa_aleatorio
 
 def simular_fuga(grafo):
     ladrao_pos = grafo.local_roubo
@@ -61,23 +62,37 @@ def gerar_relatorio(sucesso_policia, turnos, cam_ladrao, cam_policias):
     print("RELATÓRIO OFICIAL DA OPERAÇÃO")
     print("="*40)
     
-    if sucesso_policia:
-        print(f"Resultado: Ladrão CAPTURADO em {turnos} etapas." ) 
-        print(f"Equipes necessárias: {len(cam_policias)}.") 
-    else:
-        print(f"Resultado: Ladrão ESCAPOU em {turnos} etapas." ) 
-        
-    print(f"Sequência do Ladrão: {' -> '.join(map(str, cam_ladrao))}") 
+    palavra_etapa = "etapa" if turnos == 1 else "etapas"
     
-    print("Caminho percorrido pelas equipes policiais:") 
+    if sucesso_policia:
+        print(f"Resultado: Ladrão CAPTURADO em {turnos} {palavra_etapa}." )
+        print(f"Momento da captura: Turno {turnos}.")
+        print(f"Equipes mobilizadas: {len(cam_policias)}.")
+    else:
+        print(f"Resultado: Ladrão ESCAPOU em {turnos} {palavra_etapa}." )
+        
+    print(f"Sequência do Ladrão: {' -> '.join(map(str, cam_ladrao))}")
+    
+    print("Caminho percorrido pelas equipes policiais:")
     for equipe, caminho in cam_policias.items():
         print(f"  Equipe {equipe + 1}: {' -> '.join(map(str, caminho))}")
     print("="*40 + "\n")
 
 if __name__ == "__main__":
+    print("="*40)
+    print("SISTEMA DE SEGURANÇA - COPPERS AND ROBBERS")
+    print("="*40)
+    
+    escolha = input("Deseja gerar um NOVO mapa aleatório antes de simular? (s/n): ").strip().lower()
+    
+    arquivo_mapa = "mapa_exemplo.txt"
+    
+    if escolha == 's':
+        gerar_mapa_aleatorio(arquivo_mapa, num_vertices=25, num_saidas=4, num_policiais=3)
+    
     ilha = GrafoIlha()
     print("Carregando mapa e inicializando sistema de segurança...")
-    ilha.carregar_mapa("mapa_exemplo.txt")
+    ilha.carregar_mapa(arquivo_mapa)
     
     print("Calculando rotas estratégicas (Floyd-Warshall)...")
     ilha.executar_floyd_warshall()
