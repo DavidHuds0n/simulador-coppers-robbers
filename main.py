@@ -7,59 +7,56 @@ from gerador import gerar_mapa_aleatorio
 # ==========================================================================
 
 def simular_fuga(grafo):
-    """
-    Executa o loop principal da perseguição.
-    Regras: Ladrão anda 1 passo, Polícia anda 2 passos por rodada.
-    """
     ladrao_pos = grafo.local_roubo
     policias_pos = list(grafo.posicoes_policia)
     
-    # Estruturas para o relatório final (Análise e Discussão)
     turnos = 0
     caminho_ladrao = [ladrao_pos]
     caminhos_policias = {i: [pos] for i, pos in enumerate(policias_pos)}
-    
-    # Estratégia do Ladrão: Ir para a saída que oferece o menor custo total
-    saida_alvo = min(grafo.saidas, key=lambda s: grafo.dist[ladrao_pos][s])
-    
+
+    # O ladrão é inteligente: ele analisa todos os 6 portos e escolhe o que 
+    # possui o menor custo acumulado via Floyd-Warshall 
+    porto_alvo = min(grafo.saidas, key=lambda s: grafo.dist[ladrao_pos][s])
+    print(f"[IA Ladrão] Alvo identificado: Porto {porto_alvo} (Custo: {grafo.dist[ladrao_pos][porto_alvo]})")
+
     while True:
         turnos += 1
         print(f"\n--- TURNO {turnos} ---")
         
-        # --- 1. MOVIMENTAÇÃO DO LADRÃO ---
-        if ladrao_pos != saida_alvo:
-            prox = grafo.pegar_proximo_passo(ladrao_pos, saida_alvo)
+        # 1. MOVIMENTAÇÃO DO LADRÃO (1 vértice por vez) [cite: 101]
+        if ladrao_pos != porto_alvo:
+            # Ele usa o conhecimento prévio do mapa para seguir a rota ótima 
+            prox = grafo.pegar_proximo_passo(ladrao_pos, porto_alvo)
             if prox:
                 ladrao_pos = prox
                 caminho_ladrao.append(ladrao_pos)
-                print(f"O Ladrão desceu para o vértice {ladrao_pos}.")
-        
-        # Condição de Vitória 1: Fuga bem-sucedida
+                print(f"Ladrão moveu para {ladrao_pos}")
+
         if ladrao_pos in grafo.saidas:
+            print("[RESULTADO] O ladrão alcançou um porto e escapou!")
             imprimir_relatorio(False, turnos, caminho_ladrao, caminhos_policias)
             break
 
-        # --- 2. MOVIMENTAÇÃO DA POLÍCIA ---
+        # 2. MOVIMENTAÇÃO DOS POLICIAIS (2 vértices por rodada na perseguição) 
         capturado = False
-        for i, pos_atual in enumerate(policias_pos):
-            # A polícia é 2x mais rápida: executa dois movimentos por turno
-            for movimento in range(2):
-                if pos_atual == ladrao_pos:
+        for i, pos_pol in enumerate(policias_pos):
+            # Durante a perseguição (após o roubo), a polícia dobra a velocidade 
+            for passo in range(2):
+                if pos_pol == ladrao_pos:
                     capturado = True; break
                 
-                # A polícia sempre recalcula o caminho mínimo até a posição atual do ladrão
-                passo = grafo.pegar_proximo_passo(pos_atual, ladrao_pos)
-                if passo:
-                    pos_atual = passo
-                    caminhos_policias[i].append(pos_atual)
+                # A polícia usa drones (identificação em tempo real) para perseguir o ladrão [cite: 70, 107]
+                prox_p = grafo.pegar_proximo_passo(pos_pol, ladrao_pos)
+                if prox_p:
+                    pos_pol = prox_p
+                    caminhos_policias[i].append(pos_pol)
             
-            policias_pos[i] = pos_atual
-            print(f"Equipe {i+1} avançou para o vértice {pos_atual}.")
-            if pos_atual == ladrao_pos: capturado = True
-                
-        # Condição de Vitória 2: Captura
+            policias_pos[i] = pos_pol
+            print(f"Equipe {i+1} está no vértice {pos_pol}")
+            if pos_pol == ladrao_pos: capturado = True
+
         if capturado:
-            print("\n!!! O LADRÃO FOI CERCADO E PRESO !!!")
+            print("\n!!! O LADRÃO FOI ALCANÇADO E PRESO !!!")
             imprimir_relatorio(True, turnos, caminho_ladrao, caminhos_policias)
             break
 
