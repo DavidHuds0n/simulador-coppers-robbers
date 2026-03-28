@@ -1,64 +1,119 @@
 from grafo import GrafoIlha
-from gerador import gerar_mapa_aleatorio
+from gerador import gerar_mapa_completo
 
 # ==========================================================================
 # --- MOTOR DE SIMULAÇÃO: COPPERS AND ROBBERS ---
 # Gerencia a perseguição em turnos e gera o relatório oficial de saída.
 # ==========================================================================
 
-def simular_fuga(grafo):
+import random
+
+def movimentar_patrulha_aleatoria(grafo, eq):
+    """
+    Move o patrulheiro para um vizinho aleatório, evitando retornar imediatamente.
+    """
+    vizinhos = list(grafo.adjacencias.get(eq['pos'], {}).keys())
+    if not vizinhos:
+        return eq['pos']
+        
+    if len(vizinhos) > 1 and eq['ultimo_pos'] in vizinhos:
+        opcoes = [v for v in vizinhos if v != eq['ultimo_pos']]
+    else:
+        opcoes = vizinhos
+
+    escolha = random.choice(opcoes)
+    eq['ultimo_pos'] = eq['pos'] 
+    return escolha
+
+def executar_rodada_perseguicao(grafo, num_ativos):
     ladrao_pos = grafo.local_roubo
-    policias_pos = list(grafo.posicoes_policia)
+    porto_alvo = min(grafo.saidas, key=lambda s: grafo.dist[ladrao_pos][s])
     
+    equipes = []
+    for i, pos in enumerate(grafo.posicoes_policia):
+        equipes.append({
+            'id': i,
+            'pos': pos,
+            'status': 'patrulha',
+            'ultimo_pos': None,
+            'caminho': [pos]
+        })
+
+    # Triagem para definir perseguidores ativos
+    equipes_ordenadas = sorted(equipes, key=lambda e: grafo.dist[e['pos']][porto_alvo])
+    for i in range(min(num_ativos, len(equipes))):
+        equipes_ordenadas[i]['status'] = 'perseguicao'
+
     turnos = 0
     caminho_ladrao = [ladrao_pos]
-    caminhos_policias = {i: [pos] for i, pos in enumerate(policias_pos)}
-
-    # O ladrão é inteligente: ele analisa todos os 6 portos e escolhe o que 
-    # possui o menor custo acumulado via Floyd-Warshall 
-    porto_alvo = min(grafo.saidas, key=lambda s: grafo.dist[ladrao_pos][s])
-    print(f"[IA Ladrão] Alvo identificado: Porto {porto_alvo} (Custo: {grafo.dist[ladrao_pos][porto_alvo]})")
-
+    
     while True:
         turnos += 1
-        print(f"\n--- TURNO {turnos} ---")
         
-        # 1. MOVIMENTAÇÃO DO LADRÃO (1 vértice por vez) [cite: 101]
+        # 1. Movimentação do Ladrão (Velocidade 1)
         if ladrao_pos != porto_alvo:
-            # Ele usa o conhecimento prévio do mapa para seguir a rota ótima 
-            prox = grafo.pegar_proximo_passo(ladrao_pos, porto_alvo)
-            if prox:
-                ladrao_pos = prox
+            prox_l = grafo.pegar_proximo_passo(ladrao_pos, porto_alvo)
+            if prox_l:
+                ladrao_pos = prox_l
                 caminho_ladrao.append(ladrao_pos)
-                print(f"Ladrão moveu para {ladrao_pos}")
 
-        if ladrao_pos in grafo.saidas:
-            print("[RESULTADO] O ladrão alcançou um porto e escapou!")
-            imprimir_relatorio(False, turnos, caminho_ladrao, caminhos_policias)
-            break
-
-        # 2. MOVIMENTAÇÃO DOS POLICIAIS (2 vértices por rodada na perseguição) 
-        capturado = False
-        for i, pos_pol in enumerate(policias_pos):
-            # Durante a perseguição (após o roubo), a polícia dobra a velocidade 
-            for passo in range(2):
-                if pos_pol == ladrao_pos:
-                    capturado = True; break
-                
-                # A polícia usa drones (identificação em tempo real) para perseguir o ladrão [cite: 70, 107]
-                prox_p = grafo.pegar_proximo_passo(pos_pol, ladrao_pos)
-                if prox_p:
-                    pos_pol = prox_p
-                    caminhos_policias[i].append(pos_pol)
+        # 2. Movimentação da Polícia
+        alguem_capturou = False
+        for eq in equipes:
+            if eq['status'] == 'perseguicao':
+                # Perseguidores (Velocidade 2)
+                for _ in range(2):
+                    # Se o ladrão já foi pego por OUTRA equipe, este policial ainda se move
+                    # em direção à posição onde o ladrão foi interceptado.
+                    if eq['pos'] == ladrao_pos:
+                        alguem_capturou = True
+                        # Não damos 'break' aqui para permitir o fim do movimento total do turno
+                    
+                    prox_p = grafo.pegar_proximo_passo(eq['pos'], ladrao_pos)
+                    if prox_p:
+                        eq['ultimo_pos'] = eq['pos']
+                        eq['pos'] = prox_p
+                        eq['caminho'].append(eq['pos'])
+            else:
+                # Patrulheiros (Velocidade 1)
+                nova_pos = movimentar_patrulha_aleatoria(grafo, eq)
+                eq['pos'] = nova_pos
+                eq['caminho'].append(eq['pos'])
             
-            policias_pos[i] = pos_pol
-            print(f"Equipe {i+1} está no vértice {pos_pol}")
-            if pos_pol == ladrao_pos: capturado = True
+            # Verifica se ESTA equipe alcançou o ladrão após seus movimentos
+            if eq['pos'] == ladrao_pos:
+                alguem_capturou = True
 
-        if capturado:
-            print("\n!!! O LADRÃO FOI ALCANÇADO E PRESO !!!")
-            imprimir_relatorio(True, turnos, caminho_ladrao, caminhos_policias)
-            break
+        # 3. Verificação de Condições de Parada (APÓS todos se moverem)
+        if alguem_capturou:
+            return True, turnos, caminho_ladrao, {e['id']: e['caminho'] for e in equipes}
+        
+        if ladrao_pos == porto_alvo:
+            return False, turnos, caminho_ladrao, {e['id']: e['caminho'] for e in equipes}
+def simular_fuga(grafo):
+    """
+    Gerencia o ciclo de tentativas escalonadas. 
+    Mantida conforme estrutura original, apenas garantindo o fluxo.
+    """
+    total_equipes = len(grafo.posicoes_policia)
+    
+    for qtd_perseguidores in range(1, total_equipes + 1):
+        print(f"\n{'='*20} TENTATIVA {qtd_perseguidores} {'='*20}")
+        print(f"[INFO] Operação com {qtd_perseguidores} equipe(s) em perseguição ativa.")
+        
+        sucesso, turnos, rota_l, rotas_p = executar_rodada_perseguicao(grafo, qtd_perseguidores)
+        
+        if sucesso:
+            print(f"\n!!! SUCESSO NA TENTATIVA {qtd_perseguidores} !!!")
+            imprimir_relatorio(True, turnos, rota_l, rotas_p)
+            return
+        else:
+            print(f"\n[FALHA] O ladrão escapou da(s) {qtd_perseguidores} equipe(s).")
+            if qtd_perseguidores < total_equipes:
+                print("Reiniciando operação com reforço tático...")
+            else:
+                print("[DERROTA] O ladrão escapou de todo o cerco policial.")
+                imprimir_relatorio(False, turnos, rota_l, rotas_p)
 
 def imprimir_relatorio(sucesso_policia, turnos, cam_ladrao, cam_policias):
     """Gera a saída detalhada para o arquivo de análise do projeto."""
@@ -89,7 +144,7 @@ if __name__ == "__main__":
     
     # Interação para geração de dados
     if input("Deseja gerar um novo cenário aleatório? (s/n): ").lower() == 's':
-        gerar_mapa_aleatorio()
+        gerar_mapa_completo()
     
     ilha = GrafoIlha()
     ilha.carregar_mapa("mapa_exemplo.txt")
