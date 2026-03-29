@@ -4,7 +4,7 @@
 
 **Professor:** Carlos Vinicius G. C. Lima 
 
-**Autores:** David Hudson Gomes Alves e Luann Alves
+**Autores:** David Hudson Gomes Alves e Luann Alves Pereira de Lima
 
 ---
 
