@@ -20,8 +20,8 @@ A inteligência da simulação aplica uma estratégia de escalonamento de recurs
 ## Divisão de Tarefas
 Para a execução deste projeto, as responsabilidades foram divididas da seguinte forma:
 
-*   **David Hudson:** Infraestrutura de Dados e Matemática. Responsável pela geração procedural dos mapas (garantindo as regras físicas de relevo), modelagem da classe do Grafo, leitura do arquivo de configuração e implementação do algoritmo de Floyd-Warshall.
-*   **Luann Alves:** Lógica de Negócio e Motor de Turnos. Responsável pelo algoritmo de triagem de equipes (alocação de recursos), movimentação diferenciada (patrulha vs. perseguição), escalonamento de tentativas (cerco) e geração dos relatórios de análise no terminal.
+* **David Hudson:** Infraestrutura de Dados e Matemática. Responsável pela geração procedural dos mapas (garantindo as regras físicas de relevo), modelagem da classe do Grafo, leitura do arquivo de configuração e implementação do algoritmo de Floyd-Warshall.
+* **Luann Alves:** Lógica de Negócio e Motor de Turnos. Responsável pelo algoritmo de triagem de equipes (alocação de recursos), movimentação diferenciada (patrulha vs. perseguição), escalonamento de tentativas (cerco) e geração dos relatórios de análise no terminal.
 
 ---
 
@@ -67,8 +67,7 @@ O programa abrirá um menu interativo perguntando se você deseja gerar um NOVO 
 
 ---
 
-## Vídeos de Apresentação
-Conforme exigido nas especificações do projeto, seguem os links com a explicação técnica das implementações:
+## Vídeo de Apresentação
+Conforme exigido nas especificações do projeto, segue o link com a explicação técnica das implementações de ambos os membros da equipe:
 
-*   **Apresentação de David Hudson:** `[INSERIR O LINKAQUI]`
-*   **Apresentação de Luann Alves:** `[INSERIR O LINK AQUI]`
+* **Apresentação Completa (David Hudson e Luann Alves):** [Assistir no Google Drive](https://drive.google.com/file/d/1yStg1EYTitB5qVV1ga6fm93vFODuu6Q2/view?usp=sharing)
